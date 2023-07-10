@@ -23,10 +23,10 @@ func NewItemHandler(service service.ItemService) ItemHandler {
 }
 
 func (h *ItemHandlerImpl) RegisterRoutes(app *fiber.App) {
-	app.Get("/items/:id", h.GetItemByID)
-	app.Post("/items", middleware.JWTMiddleware(), h.CreateItem)
-	app.Put("/items/normal", middleware.JWTMiddleware(), h.UpdateNormalItem)
-	app.Put("/items/premium", middleware.JWTMiddleware(), h.UpdatePremiumItem)
+	app.Get("/api/v1/items/:id", h.GetItemByID)
+	app.Post("/api/v1/items", middleware.JWTMiddleware(), h.CreateItem)
+	app.Put("/api/v1/items/normal", middleware.JWTMiddleware(), h.UpdateNormalItem)
+	app.Put("/api/v1/items/premium", middleware.JWTMiddleware(), h.UpdatePremiumItem)
 }
 
 func (h *ItemHandlerImpl) GetItemByID(c *fiber.Ctx) error {
