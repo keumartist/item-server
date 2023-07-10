@@ -6,4 +6,5 @@ type ItemService interface {
 	GetItemByID(input GetItemByIDInput) (dto.Item, error)
 	UpdateNormalItem(input UpdateNormalItemInput) error
 	UpdatePremiumItem(input UpdatePremiumItemInput) error
+	CreateItem(input CreateItemInput) (dto.Item, error)
 }

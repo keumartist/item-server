@@ -50,7 +50,7 @@ func (s *ItemServiceImpl) UpdateNormalItem(input UpdateNormalItemInput) error {
 		return customerror.ErrItemNotFound
 	}
 
-	return s.repo.UpdateNormalItem(input.UserID, input.NewItem)
+	return s.repo.UpdateNormalItem(item.ID.Hex(), input.NewItem)
 }
 
 func (s *ItemServiceImpl) UpdatePremiumItem(input UpdatePremiumItemInput) error {
@@ -63,5 +63,19 @@ func (s *ItemServiceImpl) UpdatePremiumItem(input UpdatePremiumItemInput) error 
 		return customerror.ErrItemNotFound
 	}
 
-	return s.repo.UpdatePremiumItem(input.UserID, input.NewItem)
+	return s.repo.UpdatePremiumItem(item.ID.Hex(), input.NewItem)
+}
+
+func (s *ItemServiceImpl) CreateItem(input CreateItemInput) (dto.Item, error) {
+	existingItem, _ := s.repo.FindByUserID(input.UserID)
+	if existingItem != nil {
+		return dto.Item{}, customerror.ErrDuplicatedUserItem
+	}
+
+	newItem, err := s.repo.CreateItem(input.UserID, input.NormalItem, input.PremiumItem)
+	if err != nil {
+		return dto.Item{}, err
+	}
+
+	return dto.ItemDomainToDto(newItem), nil
 }

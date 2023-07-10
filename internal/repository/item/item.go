@@ -7,6 +7,7 @@ import (
 	"art-item/internal/domain/item"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -24,8 +25,13 @@ func (r *MongoDBItemRepository) FindByID(id string) (*item.Item, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, err
+	}
+
 	var result item.Item
-	err := r.collection.FindOne(ctx, bson.M{"_id": id}).Decode(&result)
+	err = r.collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&result)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, nil
@@ -56,7 +62,12 @@ func (r *MongoDBItemRepository) UpdateNormalItem(id string, normalItem map[strin
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	_, err := r.collection.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"normal_item": normalItem}})
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+
+	_, err = r.collection.UpdateOne(ctx, bson.M{"_id": objectID}, bson.M{"$set": bson.M{"normal_item": normalItem, "updated_at": time.Now()}})
 	return err
 }
 
@@ -64,6 +75,33 @@ func (r *MongoDBItemRepository) UpdatePremiumItem(id string, premiumItem map[str
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	_, err := r.collection.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$set": bson.M{"premium_item": premiumItem}})
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+
+	_, err = r.collection.UpdateOne(ctx, bson.M{"_id": objectID}, bson.M{"$set": bson.M{"premium_item": premiumItem, "updated_at": time.Now()}})
 	return err
+}
+
+func (r *MongoDBItemRepository) CreateItem(userID string, normalItem map[string]interface{}, premiumItem map[string]interface{}) (*item.Item, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	newItem := &item.Item{
+		UserID:      userID,
+		NormalItem:  normalItem,
+		PremiumItem: premiumItem,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+
+	res, err := r.collection.InsertOne(ctx, newItem)
+	if err != nil {
+		return nil, err
+	}
+
+	newItem.ID = res.InsertedID.(primitive.ObjectID)
+
+	return newItem, nil
 }

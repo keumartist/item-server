@@ -2,6 +2,7 @@ package item
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	customerror "art-item/internal/error"
@@ -23,6 +24,7 @@ func NewItemHandler(service service.ItemService) ItemHandler {
 
 func (h *ItemHandlerImpl) RegisterRoutes(app *fiber.App) {
 	app.Get("/items/:id", h.GetItemByID)
+	app.Post("/items", middleware.JWTMiddleware(), h.CreateItem)
 	app.Put("/items/normal", middleware.JWTMiddleware(), h.UpdateNormalItem)
 	app.Put("/items/premium", middleware.JWTMiddleware(), h.UpdatePremiumItem)
 }
@@ -43,15 +45,17 @@ func (h *ItemHandlerImpl) GetItemByID(c *fiber.Ctx) error {
 }
 
 func (h *ItemHandlerImpl) UpdateNormalItem(c *fiber.Ctx) error {
-	var newItem map[string]interface{}
+	var input struct {
+		NewItem map[string]interface{} `json:"new_item"`
+	}
 
-	if err := c.BodyParser(&newItem); err != nil {
+	if err := c.BodyParser(&input); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(customerror.ErrBadRequest)
 	}
 
 	userID := c.Locals("userID").(string)
 
-	if err := h.service.UpdateNormalItem(service.UpdateNormalItemInput{UserID: userID, NewItem: newItem}); err != nil {
+	if err := h.service.UpdateNormalItem(service.UpdateNormalItemInput{UserID: userID, NewItem: input.NewItem}); err != nil {
 		if errors.Is(err, customerror.ErrItemNotFound) {
 			return c.Status(http.StatusBadRequest).JSON(customerror.ErrItemNotFound)
 		}
@@ -62,19 +66,46 @@ func (h *ItemHandlerImpl) UpdateNormalItem(c *fiber.Ctx) error {
 }
 
 func (h *ItemHandlerImpl) UpdatePremiumItem(c *fiber.Ctx) error {
-	var newItem map[string]interface{}
+	var input struct {
+		NewItem map[string]interface{} `json:"new_item"`
+	}
 
-	if err := c.BodyParser(&newItem); err != nil {
+	if err := c.BodyParser(&input); err != nil {
 		return c.Status(http.StatusBadRequest).JSON(customerror.ErrBadRequest)
 	}
 
 	userID := c.Locals("userID").(string)
-	if err := h.service.UpdatePremiumItem(service.UpdatePremiumItemInput{UserID: userID, NewItem: newItem}); err != nil {
+	if err := h.service.UpdatePremiumItem(service.UpdatePremiumItemInput{UserID: userID, NewItem: input.NewItem}); err != nil {
 		if errors.Is(err, customerror.ErrItemNotFound) {
 			return c.Status(http.StatusBadRequest).JSON(customerror.ErrItemNotFound)
 		}
 		return c.Status(http.StatusInternalServerError).JSON(customerror.ErrInternal)
 	}
 
+	log.Println("업뎃됭나")
+
 	return c.Status(http.StatusOK).JSON(fiber.Map{"message": "Item updated successfully"})
+}
+
+func (h *ItemHandlerImpl) CreateItem(c *fiber.Ctx) error {
+	var input struct {
+		NormalItem  map[string]interface{} `json:"normal_item"`
+		PremiumItem map[string]interface{} `json:"premium_item"`
+	}
+
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(http.StatusBadRequest).JSON(customerror.ErrBadRequest)
+	}
+
+	userID := c.Locals("userID").(string)
+
+	newItem, err := h.service.CreateItem(service.CreateItemInput{UserID: userID, NormalItem: input.NormalItem, PremiumItem: input.PremiumItem})
+	if err != nil {
+		if errors.Is(err, customerror.ErrDuplicatedUserItem) {
+			return c.Status(http.StatusBadRequest).JSON(customerror.ErrDuplicatedUserItem)
+		}
+		return c.Status(http.StatusInternalServerError).JSON(customerror.ErrInternal)
+	}
+
+	return c.Status(http.StatusCreated).JSON(newItem)
 }

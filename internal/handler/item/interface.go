@@ -7,4 +7,5 @@ type ItemHandler interface {
 	GetItemByID(c *fiber.Ctx) error
 	UpdateNormalItem(c *fiber.Ctx) error
 	UpdatePremiumItem(c *fiber.Ctx) error
+	CreateItem(c *fiber.Ctx) error
 }
