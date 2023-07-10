@@ -1,16 +1,17 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
 	customerror "art-item/internal/error"
+	"art-item/internal/outbound"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt"
 )
 
-func JWTMiddleware() fiber.Handler {
+func AuthMiddleware(authClient outbound.AuthServiceClient) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
@@ -27,18 +28,18 @@ func JWTMiddleware() fiber.Handler {
 			return c.Status(http.StatusUnauthorized).JSON(customerror.ErrUnauthorized)
 		}
 
-		token, _ := jwt.Parse(tokenString, nil)
-
-		if token == nil {
+		ctx := context.Background()
+		res, err := authClient.VerifyToken(ctx, tokenString, "access")
+		if err != nil {
 			return c.Status(http.StatusUnauthorized).JSON(customerror.ErrUnauthorized)
 		}
 
-		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			userID := claims["sub"].(string)
-			c.Locals("userID", userID)
-			return c.Next()
-		} else {
+		if !res.IsValid {
 			return c.Status(http.StatusUnauthorized).JSON(customerror.ErrUnauthorized)
 		}
+
+		c.Locals("userID", res.UserId)
+
+		return c.Next()
 	}
 }

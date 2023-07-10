@@ -7,6 +7,7 @@ import (
 
 	customerror "art-item/internal/error"
 	middleware "art-item/internal/middleware"
+	"art-item/internal/outbound"
 	service "art-item/internal/service/item"
 
 	"github.com/gofiber/fiber/v2"
@@ -22,11 +23,11 @@ func NewItemHandler(service service.ItemService) ItemHandler {
 	}
 }
 
-func (h *ItemHandlerImpl) RegisterRoutes(app *fiber.App) {
+func (h *ItemHandlerImpl) RegisterRoutes(app *fiber.App, authClient outbound.AuthServiceClient) {
 	app.Get("/api/v1/items/:id", h.GetItemByID)
-	app.Post("/api/v1/items", middleware.JWTMiddleware(), h.CreateItem)
-	app.Put("/api/v1/items/normal", middleware.JWTMiddleware(), h.UpdateNormalItem)
-	app.Put("/api/v1/items/premium", middleware.JWTMiddleware(), h.UpdatePremiumItem)
+	app.Post("/api/v1/items", middleware.AuthMiddleware(authClient), h.CreateItem)
+	app.Put("/api/v1/items/normal", middleware.AuthMiddleware(authClient), h.UpdateNormalItem)
+	app.Put("/api/v1/items/premium", middleware.AuthMiddleware(authClient), h.UpdatePremiumItem)
 }
 
 func (h *ItemHandlerImpl) GetItemByID(c *fiber.Ctx) error {

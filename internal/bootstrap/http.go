@@ -7,6 +7,7 @@ import (
 	"time"
 
 	handler "art-item/internal/handler/item"
+	"art-item/internal/outbound"
 	repository "art-item/internal/repository/item"
 	service "art-item/internal/service/item"
 
@@ -34,8 +35,11 @@ func InitHTTPServer() error {
 	itemService := service.NewItemService(itemRepo)
 	itemHandler := handler.NewItemHandler(itemService)
 
+	authEndpoint := os.Getenv("AUTH_SERVICE_ENDPOINT") // ex) "auth-service.default.svc.cluster.local:50051"
+	authClient := outbound.NewAuthServiceClient(authEndpoint)
+
 	app := fiber.New()
-	itemHandler.RegisterRoutes(app)
+	itemHandler.RegisterRoutes(app, authClient)
 
 	err = app.Listen(":3000")
 	if err != nil {
